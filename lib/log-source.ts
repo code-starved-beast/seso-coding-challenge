@@ -1,8 +1,6 @@
-"use strict";
-
-const _ = require("lodash");
-const Faker = require("Faker");
-const P = require("bluebird");
+import { random } from "lodash";
+import { Company } from "Faker";
+import { delay } from "bluebird";
 
 /*
     We don't like OOP - in fact - we despise it!
@@ -11,12 +9,20 @@ const P = require("bluebird");
     will be in OO form - therefore - we simulate that interaction here.
 */
 
-module.exports = class LogSource {
+export interface LogEntry {
+  date: Date;
+  msg: string;
+}
+
+export default class LogSource {
+  drained: boolean;
+  last: LogEntry
+
   constructor() {
     this.drained = false;
     this.last = {
-      date: new Date(Date.now() - 1000 * 60 * 60 * 24 * _.random(40, 60)),
-      msg: Faker.Company.catchPhrase(),
+      date: new Date(Date.now() - 1000 * 60 * 60 * 24 * random(40, 60)),
+      msg: Company.catchPhrase(),
     };
   }
 
@@ -24,14 +30,14 @@ module.exports = class LogSource {
     return {
       date: new Date(
         this.last.date.getTime() +
-          1000 * 60 * 60 * _.random(10) +
-          _.random(1000 * 60)
+          1000 * 60 * 60 * random(10) +
+          random(1000 * 60)
       ),
-      msg: Faker.Company.catchPhrase(),
+      msg: Company.catchPhrase(),
     };
   }
 
-  pop() {
+  pop(): LogEntry | boolean {
     this.last = this.getNextPseudoRandomEntry();
     if (this.last.date > new Date()) {
       this.drained = true;
@@ -39,11 +45,13 @@ module.exports = class LogSource {
     return this.drained ? false : this.last;
   }
 
-  popAsync() {
+  async popAsync(): Promise<LogEntry | boolean> {
     this.last = this.getNextPseudoRandomEntry();
-    if (this.last.date > Date.now()) {
+    if (this.last.date > new Date()) {
       this.drained = true;
     }
-    return P.delay(_.random(8)).then(() => (this.drained ? false : this.last));
+    await delay(random(8));
+    
+    return (this.drained ? false : this.last);
   }
 };

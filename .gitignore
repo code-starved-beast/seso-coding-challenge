@@ -70,3 +70,4 @@ npm-debug.log
 # Vagrant Specific #
 #####################
 .vagrant
+build

@@ -1,14 +1,18 @@
-"use strict";
+import _ from "lodash";
+import { LogEntry } from "./log-source";
 
-const _ = require("lodash");
+export default class Printer {
+  last: Date;
+  startTime: Date;
+  logsPrinted: number;
 
-module.exports = class Printer {
   constructor() {
     this.last = new Date(0);
     this.logsPrinted = 0;
+    this.startTime = new Date(0);
   }
 
-  print(log) {
+  print(log: LogEntry) {
     if (!_.isDate(log.date)) {
       throw new Error(log.date + " is not a date");
     }
@@ -25,7 +29,7 @@ module.exports = class Printer {
   }
 
   done() {
-    var timeTaken = (new Date() - this.startTime) / 1000;
+    const timeTaken = (Date.now() - this.startTime.valueOf()) / 1000;
     console.log("\n***********************************");
     console.log("Logs printed:\t\t", this.logsPrinted);
     console.log("Time taken (s):\t\t", timeTaken);
