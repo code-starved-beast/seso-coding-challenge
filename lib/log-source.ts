@@ -37,7 +37,7 @@ export default class LogSource {
     };
   }
 
-  pop(): LogEntry | boolean {
+  pop(): LogEntry | false {
     this.last = this.getNextPseudoRandomEntry();
     if (this.last.date > new Date()) {
       this.drained = true;
@@ -45,7 +45,7 @@ export default class LogSource {
     return this.drained ? false : this.last;
   }
 
-  async popAsync(): Promise<LogEntry | boolean> {
+  async popAsync(): Promise<LogEntry | false> {
     this.last = this.getNextPseudoRandomEntry();
     if (this.last.date > new Date()) {
       this.drained = true;

@@ -3,13 +3,12 @@ import { LogEntry } from "./log-source";
 
 export default class Printer {
   last: Date;
-  startTime: Date;
+  startTime?: Date;
   logsPrinted: number;
 
   constructor() {
     this.last = new Date(0);
     this.logsPrinted = 0;
-    this.startTime = new Date(0);
   }
 
   print(log: LogEntry) {
@@ -29,7 +28,7 @@ export default class Printer {
   }
 
   done() {
-    const timeTaken = (Date.now() - this.startTime.valueOf()) / 1000;
+    const timeTaken = (Date.now() - (this.startTime || new Date()).valueOf()) / 1000;
     console.log("\n***********************************");
     console.log("Logs printed:\t\t", this.logsPrinted);
     console.log("Time taken (s):\t\t", timeTaken);
