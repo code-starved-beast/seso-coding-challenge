@@ -29,8 +29,8 @@ function runSolutions(sourceCount: number) {
       syncLogSources.push(new LogSource());
     }
 
-    const printer = new Printer();
-    syncSortedMerge(syncLogSources, printer);
+    const syncPrinter = new Printer();
+    syncSortedMerge(syncLogSources, syncPrinter);
 
     /**
      * Challenge Number 2!
@@ -49,8 +49,9 @@ function runSolutions(sourceCount: number) {
     for (let i_1 = 0; i_1 < sourceCount; i_1++) {
       asyncLogSources.push(new LogSource());
     }
-
-    asyncSortedMerge(asyncLogSources, printer);
+    
+    const asyncPrinter = new Printer();
+    asyncSortedMerge(asyncLogSources, asyncPrinter);
 }
 
 // Adjust this input to see how your solutions perform under various loads.
