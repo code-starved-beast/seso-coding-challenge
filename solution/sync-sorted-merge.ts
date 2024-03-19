@@ -1,57 +1,49 @@
 // Print all entries, across all of the *async* sources, in chronological order.
-import { sortBy } from "lodash";
+import { MinPriorityQueue } from "@datastructures-js/priority-queue";
 import LogSource, { LogEntry } from "../lib/log-source";
 import Printer from "../lib/printer";
 
 export default async (logSources: LogSource[], printer: Printer) => {
-  let logEntryQueue: LogEntry[] = [];
+  const logEntryQueue = new MinPriorityQueue<LogEntry>(({ date }) =>
+    date.valueOf()
+  );
+  const logSourceQueue = new MinPriorityQueue<LogSource>(({ last }) =>
+    last.date.valueOf()
+  );
 
-  const sortedLogSourcesByLastEntry = sortBy(
-    logSources.filter(({ drained }) => !drained),
-    (source) => {
-      const next = source.pop();
-      if (next) {
-        logEntryQueue.push(next);
-        return next.date.valueOf();
-      }
+  for (const logSource of logSources) {
+    const logEntry = logSource.pop();
 
-      return Date.now();
+    if (logEntry) {
+      logEntryQueue.enqueue(logEntry);
     }
-  );
 
-  logEntryQueue = sortBy(logEntryQueue, ({ date }) => date.valueOf());
+    if (!logSource.drained) {
+      logSourceQueue.enqueue(logSource);
+    }  
+  }
 
-  const undrainedLogSources = sortedLogSourcesByLastEntry.filter(
-    ({ drained }) => !drained
-  );
-
-  while (undrainedLogSources.length > 0) {
-    const nextEntry = logEntryQueue.shift();
+  while (logSourceQueue.size() > 0) {
+    const nextEntry = logEntryQueue.dequeue();
 
     if (nextEntry) {
       printer.print(nextEntry);
     }
 
-    const logSourceWithMostRecentEntry = undrainedLogSources.shift();
+    const logSourceWithMostRecentEntry = logSourceQueue.dequeue();
 
     if (!logSourceWithMostRecentEntry) continue;
 
     const next = logSourceWithMostRecentEntry.pop();
+
     if (!next) {
       continue;
     }
 
-    let i = 0;
-    for (; i < logEntryQueue.length; i++) {
-      if (logEntryQueue[i].date > next.date) {
-        break;
-      }
-    }
-
-    logEntryQueue.splice(i, 0, next);
+    logEntryQueue.enqueue(next);
 
     if (!logSourceWithMostRecentEntry.drained) {
-      undrainedLogSources.splice(i, 0, logSourceWithMostRecentEntry);
+      logSourceQueue.enqueue(logSourceWithMostRecentEntry);
     }
   }
 
