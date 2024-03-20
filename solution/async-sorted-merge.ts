@@ -1,13 +1,19 @@
 // Print all entries, across all of the *async* sources, in chronological order.
 import { MinPriorityQueue } from "@datastructures-js/priority-queue";
-import { compact } from "lodash";
-import LogSource from "../lib/log-source";
+import { chunk, compact } from "lodash";
+import LogSource, { LogEntry } from "../lib/log-source";
 import Printer from "../lib/printer";
 
+export const MAX_CONCURRENCY = 20;
+export const MAX_QUEUE_SIZE = 25_000;
+
 export default async (logSources: LogSource[], printer: Printer) => {
-  const logEntries = compact(
-    await Promise.all(logSources.map(async (source) => source.popAsync()))
-  );
+  const logEntries: LogEntry[] = [];
+  for (const sources of chunk(logSources, MAX_CONCURRENCY)) {
+    logEntries.push(
+      ...compact(await Promise.all(sources.map(async (src) => src.popAsync())))
+    );
+  }
 
   const logEntryQueue = MinPriorityQueue.fromArray(logEntries, ({ date }) =>
     date.valueOf()
@@ -24,25 +30,41 @@ export default async (logSources: LogSource[], printer: Printer) => {
     } else {
       break;
     }
+    if (logEntryQueue.size() + logSourceQueue.size() > MAX_QUEUE_SIZE) {
+      const logSourceWithMostRecentEntry = logSourceQueue.dequeue();
 
-    const logSourceWithMostRecentEntry = logSourceQueue.dequeue();
+      if (!logSourceWithMostRecentEntry) continue;
 
-    if (!logSourceWithMostRecentEntry) continue;
+      const next = await logSourceWithMostRecentEntry.popAsync();
 
-    await Promise.all(
-      logSources.filter(({ drained }) => !drained).map(async (src) => {
-        const next = await src.popAsync();
-
-        if (!next) {
-          return;
-        }
-
+      if (next) {
         logEntryQueue.enqueue(next);
-      })
-    );
+      }
 
-    if (!logSourceWithMostRecentEntry.drained) {
-      logSourceQueue.enqueue(logSourceWithMostRecentEntry);
+      if (!logSourceWithMostRecentEntry.drained) {
+        logSourceQueue.enqueue(logSourceWithMostRecentEntry);
+      }
+    } else {
+      const undrainedLogSources = logSourceQueue.toArray();
+      logSourceQueue.clear();
+
+      for (const sources of chunk(undrainedLogSources, MAX_CONCURRENCY)) {
+        await Promise.all(
+          sources.map(async (src) => {
+            const next = await src.popAsync();
+
+            if (next) {
+              logEntryQueue.enqueue(next);
+            }
+          })
+        );
+
+        for (const src of sources) {
+          if (!src.drained) {
+            logSourceQueue.enqueue(src);
+          }
+        }
+      }
     }
   }
 
